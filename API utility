@@ -1,0 +1,25 @@
+const BASE = process.env.REACT_APP_API_URL || '/api';
+
+async function request(path, options = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err.message || 'Request failed');
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+export const api = {
+  getGoals: () => request('/goals'),
+  getGoal: (id) => request(`/goals/${id}`),
+  createGoal: (data) => request('/goals', { method: 'POST', body: JSON.stringify(data) }),
+  updateGoal: (id, data) => request(`/goals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateProgress: (id, progress) => request(`/goals/${id}/progress`, { method: 'PATCH', body: JSON.stringify({ progress }) }),
+  toggleMilestone: (goalId, milestoneId) => request(`/goals/${goalId}/milestones/${milestoneId}`, { method: 'PATCH' }),
+  deleteGoal: (id) => request(`/goals/${id}`, { method: 'DELETE' }),
+  getStats: () => request('/stats'),
+};
