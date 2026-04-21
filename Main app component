@@ -1,0 +1,164 @@
+import React, { useState } from 'react';
+import { useGoals } from './hooks/useGoals';
+import GoalCard from './components/GoalCard';
+import GoalModal from './components/GoalModal';
+import GoalDetail from './components/GoalDetail';
+import StatsBar from './components/StatsBar';
+import './styles/global.css';
+import './styles/app.css';
+
+const FILTERS = ['All', 'In Progress', 'Completed', 'Not Started'];
+
+export default function App() {
+  const { goals, stats, loading, error, createGoal, updateGoal, deleteGoal, toggleMilestone, updateProgress } = useGoals();
+  const [showModal, setShowModal] = useState(false);
+  const [editGoal, setEditGoal] = useState(null);
+  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
+
+  const filteredGoals = goals.filter(g => {
+    const matchSearch = g.title.toLowerCase().includes(search.toLowerCase());
+    const matchFilter =
+      filter === 'All' ? true :
+      filter === 'In Progress' ? g.progress > 0 && g.progress < 100 :
+      filter === 'Completed' ? g.progress === 100 :
+      filter === 'Not Started' ? g.progress === 0 : true;
+    return matchSearch && matchFilter;
+  });
+
+  const handleSave = async (data) => {
+    if (editGoal) {
+      const updated = await updateGoal(editGoal.id, data);
+      if (selectedGoal?.id === editGoal.id) setSelectedGoal(updated);
+    } else {
+      await createGoal(data);
+    }
+    setShowModal(false);
+    setEditGoal(null);
+  };
+
+  const handleEdit = (goal) => {
+    setEditGoal(goal);
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (selectedGoal?.id === id) setSelectedGoal(null);
+    await deleteGoal(id);
+  };
+
+  const handleToggleMilestone = async (goalId, milestoneId) => {
+    const updated = await toggleMilestone(goalId, milestoneId);
+    if (selectedGoal?.id === goalId) setSelectedGoal(updated);
+  };
+
+  const handleUpdateProgress = async (id, progress) => {
+    const updated = await updateProgress(id, progress);
+    if (selectedGoal?.id === id) setSelectedGoal(updated);
+  };
+
+  return (
+    <div className="app">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar__brand">
+          <span className="brand-icon">◎</span>
+          <span className="brand-name">Progress Hub</span>
+        </div>
+
+        <StatsBar stats={stats} />
+
+        <div className="sidebar__filters">
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              className={`filter-btn ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(f)}
+            >{f}</button>
+          ))}
+        </div>
+
+        <button className="new-goal-btn" onClick={() => { setEditGoal(null); setShowModal(true); }}>
+          <span>+</span> New Goal
+        </button>
+      </aside>
+
+      {/* Main content */}
+      <main className="main">
+        <div className="main__topbar">
+          <div>
+            <h1 className="main__title">
+              {filter === 'All' ? 'All Goals' : filter}
+              <span className="goal-count">{filteredGoals.length}</span>
+            </h1>
+          </div>
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search goals..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {loading && (
+          <div className="loading">
+            <div className="spinner" />
+            <span>Loading your goals...</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="error-msg">
+            ⚠️ {error} — Make sure the backend server is running on port 5000.
+          </div>
+        )}
+
+        {!loading && !error && filteredGoals.length === 0 && (
+          <div className="empty-state">
+            <span className="empty-icon">🎯</span>
+            <h3>No goals yet</h3>
+            <p>Create your first goal to start tracking progress</p>
+            <button className="btn btn--primary" onClick={() => setShowModal(true)}>
+              + Create Goal
+            </button>
+          </div>
+        )}
+
+        <div className="goals-grid">
+          {filteredGoals.map(g => (
+            <GoalCard
+              key={g.id}
+              goal={g}
+              onClick={setSelectedGoal}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      </main>
+
+      {/* Detail panel */}
+      {selectedGoal && (
+        <div className="detail-overlay">
+          <GoalDetail
+            goal={selectedGoal}
+            onToggleMilestone={handleToggleMilestone}
+            onUpdateProgress={handleUpdateProgress}
+            onEdit={handleEdit}
+            onClose={() => setSelectedGoal(null)}
+          />
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {showModal && (
+        <GoalModal
+          goal={editGoal}
+          onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditGoal(null); }}
+        />
+      )}
+    </div>
+  );
+}
