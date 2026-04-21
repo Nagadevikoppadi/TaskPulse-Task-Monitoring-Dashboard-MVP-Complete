@@ -1,0 +1,94 @@
+import React, { useState } from 'react';
+import ProgressRing from './ProgressRing';
+
+export default function GoalDetail({ goal, onToggleMilestone, onUpdateProgress, onEdit, onClose }) {
+  const [progressInput, setProgressInput] = useState(goal.progress);
+
+  const handleProgressChange = (val) => {
+    setProgressInput(val);
+    onUpdateProgress(goal.id, val);
+  };
+
+  return (
+    <div className="detail-panel animate-in">
+      <div className="detail-panel__header" style={{ borderColor: goal.color }}>
+        <button className="detail-panel__back" onClick={onClose}>← Back</button>
+        <button className="btn btn--ghost" onClick={() => onEdit(goal)}>Edit</button>
+      </div>
+
+      <div className="detail-panel__hero">
+        <div className="detail-ring">
+          <ProgressRing progress={goal.progress} size={120} strokeWidth={8} color={goal.color} />
+          <div className="detail-ring__label">
+            <span className="detail-ring__pct">{goal.progress}%</span>
+            <span className="detail-ring__sub">complete</span>
+          </div>
+        </div>
+
+        <div className="detail-panel__info">
+          <span className="detail-panel__category">{goal.category}</span>
+          <h2 className="detail-panel__title">{goal.title}</h2>
+          {goal.description && <p className="detail-panel__desc">{goal.description}</p>}
+          {goal.targetDate && (
+            <span className="detail-panel__date">
+              🗓 {new Date(goal.targetDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="detail-section">
+        <h3>Manual Progress</h3>
+        <div className="progress-slider">
+          <input
+            type="range" min={0} max={100} value={progressInput}
+            onChange={e => handleProgressChange(+e.target.value)}
+            style={{ accentColor: goal.color }}
+          />
+          <span>{progressInput}%</span>
+        </div>
+      </div>
+
+      {goal.milestones.length > 0 && (
+        <div className="detail-section">
+          <h3>Milestones <span className="milestone-count">
+            {goal.milestones.filter(m => m.done).length}/{goal.milestones.length}
+          </span></h3>
+          <ul className="milestone-list">
+            {goal.milestones.map(m => (
+              <li
+                key={m.id}
+                className={`milestone-item ${m.done ? 'done' : ''}`}
+                onClick={() => onToggleMilestone(goal.id, m.id)}
+              >
+                <span className="milestone-check" style={{ borderColor: goal.color, background: m.done ? goal.color : 'transparent' }}>
+                  {m.done && '✓'}
+                </span>
+                <span className="milestone-text">{m.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="detail-section">
+        <div className="detail-meta">
+          <div>
+            <span className="meta-label">Created</span>
+            <span className="meta-value">{new Date(goal.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div>
+            <span className="meta-label">Updated</span>
+            <span className="meta-value">{new Date(goal.updatedAt).toLocaleDateString()}</span>
+          </div>
+          <div>
+            <span className="meta-label">Status</span>
+            <span className="meta-value" style={{ color: goal.progress === 100 ? '#4ecdc4' : goal.color }}>
+              {goal.progress === 100 ? 'Complete' : goal.progress > 0 ? 'In Progress' : 'Not Started'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
