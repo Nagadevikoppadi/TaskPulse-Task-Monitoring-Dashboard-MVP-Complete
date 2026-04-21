@@ -1,0 +1,131 @@
+import React, { useState, useEffect } from 'react';
+
+const COLORS = ['#7c6dfa', '#FF6B35', '#4ECDC4', '#FFE66D', '#A8EDEA', '#F7797D', '#43e97b', '#fa709a'];
+const CATEGORIES = ['work', 'health', 'learning', 'finance', 'personal', 'travel'];
+
+export default function GoalModal({ goal, onSave, onClose }) {
+  const [form, setForm] = useState({
+    title: '', description: '', category: 'personal',
+    color: '#7c6dfa', targetDate: '', milestones: [''],
+  });
+
+  useEffect(() => {
+    if (goal) {
+      setForm({
+        title: goal.title,
+        description: goal.description || '',
+        category: goal.category,
+        color: goal.color,
+        targetDate: goal.targetDate ? goal.targetDate.slice(0, 10) : '',
+        milestones: goal.milestones.length > 0
+          ? goal.milestones.map(m => m.text)
+          : [''],
+      });
+    }
+  }, [goal]);
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  const setMilestone = (i, val) => {
+    const ms = [...form.milestones];
+    ms[i] = val;
+    setForm(f => ({ ...f, milestones: ms }));
+  };
+
+  const addMilestone = () => setForm(f => ({ ...f, milestones: [...f.milestones, ''] }));
+  const removeMilestone = (i) => setForm(f => ({ ...f, milestones: f.milestones.filter((_, idx) => idx !== i) }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    const data = {
+      ...form,
+      milestones: form.milestones.filter(m => m.trim()),
+    };
+    onSave(data);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal__header">
+          <h2>{goal ? 'Edit Goal' : 'New Goal'}</h2>
+          <button className="modal__close" onClick={onClose}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal__form">
+          <div className="form-group">
+            <label>Title *</label>
+            <input
+              type="text" value={form.title}
+              onChange={e => set('title', e.target.value)}
+              placeholder="What do you want to achieve?"
+              required autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="Add some context..."
+              rows={2}
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Category</label>
+              <select value={form.category} onChange={e => set('category', e.target.value)}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Target Date</label>
+              <input type="date" value={form.targetDate} onChange={e => set('targetDate', e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Color</label>
+            <div className="color-picker">
+              {COLORS.map(c => (
+                <button
+                  key={c} type="button"
+                  className={`color-swatch ${form.color === c ? 'active' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => set('color', c)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Milestones</label>
+            {form.milestones.map((m, i) => (
+              <div key={i} className="milestone-input">
+                <input
+                  type="text" value={m}
+                  onChange={e => setMilestone(i, e.target.value)}
+                  placeholder={`Milestone ${i + 1}`}
+                />
+                {form.milestones.length > 1 && (
+                  <button type="button" onClick={() => removeMilestone(i)} className="remove-btn">×</button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={addMilestone} className="add-btn">+ Add milestone</button>
+          </div>
+
+          <div className="modal__actions">
+            <button type="button" onClick={onClose} className="btn btn--secondary">Cancel</button>
+            <button type="submit" className="btn btn--primary" style={{ background: form.color }}>
+              {goal ? 'Save Changes' : 'Create Goal'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
