@@ -1,0 +1,63 @@
+import React from 'react';
+import ProgressRing from './ProgressRing';
+
+const CATEGORY_ICONS = {
+  work: '💼', health: '💪', learning: '📚', finance: '💰', personal: '✨', travel: '✈️',
+};
+
+export default function GoalCard({ goal, onClick, onDelete }) {
+  const icon = CATEGORY_ICONS[goal.category] || '🎯';
+  const doneCount = goal.milestones.filter(m => m.done).length;
+  const daysLeft = goal.targetDate
+    ? Math.ceil((new Date(goal.targetDate) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  return (
+    <div
+      className="goal-card animate-in"
+      style={{ '--card-color': goal.color }}
+      onClick={() => onClick(goal)}
+    >
+      <div className="goal-card__header">
+        <span className="goal-card__icon">{icon}</span>
+        <span className="goal-card__category">{goal.category}</span>
+        <button
+          className="goal-card__delete"
+          onClick={e => { e.stopPropagation(); onDelete(goal.id); }}
+          title="Delete goal"
+        >×</button>
+      </div>
+
+      <h3 className="goal-card__title">{goal.title}</h3>
+      {goal.description && <p className="goal-card__desc">{goal.description}</p>}
+
+      <div className="goal-card__progress">
+        <div className="goal-card__ring">
+          <ProgressRing progress={goal.progress} size={64} strokeWidth={5} color={goal.color} />
+          <span className="goal-card__pct">{goal.progress}%</span>
+        </div>
+        <div className="goal-card__meta">
+          {goal.milestones.length > 0 && (
+            <div className="goal-card__milestones">
+              <span>{doneCount}/{goal.milestones.length} milestones</span>
+              <div className="goal-card__dots">
+                {goal.milestones.slice(0, 6).map(m => (
+                  <span key={m.id} className={`dot ${m.done ? 'done' : ''}`} style={{ '--dot-color': goal.color }} />
+                ))}
+              </div>
+            </div>
+          )}
+          {daysLeft !== null && (
+            <span className={`goal-card__days ${daysLeft < 7 ? 'urgent' : ''}`}>
+              {daysLeft > 0 ? `${daysLeft}d left` : daysLeft === 0 ? 'Due today' : `${Math.abs(daysLeft)}d overdue`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="goal-card__bar">
+        <div className="goal-card__fill" style={{ width: `${goal.progress}%`, background: goal.color }} />
+      </div>
+    </div>
+  );
+}
