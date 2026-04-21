@@ -1,0 +1,62 @@
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../utils/api';
+
+export function useGoals() {
+  const [goals, setGoals] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [goalsData, statsData] = await Promise.all([api.getGoals(), api.getStats()]);
+      setGoals(goalsData);
+      setStats(statsData);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const createGoal = async (data) => {
+    const newGoal = await api.createGoal(data);
+    setGoals(prev => [...prev, newGoal]);
+    setStats(await api.getStats());
+    return newGoal;
+  };
+
+  const updateGoal = async (id, data) => {
+    const updated = await api.updateGoal(id, data);
+    setGoals(prev => prev.map(g => g.id === id ? updated : g));
+    return updated;
+  };
+
+  const deleteGoal = async (id) => {
+    await api.deleteGoal(id);
+    setGoals(prev => prev.filter(g => g.id !== id));
+    setStats(await api.getStats());
+  };
+
+  const toggleMilestone = async (goalId, milestoneId) => {
+    const updated = await api.toggleMilestone(goalId, milestoneId);
+    setGoals(prev => prev.map(g => g.id === goalId ? updated : g));
+    setStats(await api.getStats());
+    return updated;
+  };
+
+  const updateProgress = async (id, progress) => {
+    const updated = await api.updateProgress(id, progress);
+    setGoals(prev => prev.map(g => g.id === id ? updated : g));
+    setStats(await api.getStats());
+    return updated;
+  };
+
+  return {
+    goals, stats, loading, error,
+    createGoal, updateGoal, deleteGoal, toggleMilestone, updateProgress, refetch: fetchAll,
+  };
+}
