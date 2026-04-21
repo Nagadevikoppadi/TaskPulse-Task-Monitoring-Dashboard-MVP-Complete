@@ -1,0 +1,157 @@
+const express = require('express');
+const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(express.json());
+
+// In-memory store (swap for MongoDB/PostgreSQL in production)
+let goals = [
+  {
+    id: uuidv4(),
+    title: 'Launch MVP',
+    description: 'Ship the first version of the product to early users',
+    category: 'work',
+    color: '#FF6B35',
+    targetDate: '2024-06-30',
+    progress: 68,
+    milestones: [
+      { id: uuidv4(), text: 'Define core features', done: true },
+      { id: uuidv4(), text: 'Build backend API', done: true },
+      { id: uuidv4(), text: 'Design UI', done: true },
+      { id: uuidv4(), text: 'Write tests', done: false },
+      { id: uuidv4(), text: 'Deploy to production', done: false },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: uuidv4(),
+    title: 'Run a 10K',
+    description: 'Complete a 10km run without stopping',
+    category: 'health',
+    color: '#4ECDC4',
+    targetDate: '2024-09-15',
+    progress: 40,
+    milestones: [
+      { id: uuidv4(), text: 'Run 2km consistently', done: true },
+      { id: uuidv4(), text: 'Run 5km', done: true },
+      { id: uuidv4(), text: 'Run 7km', done: false },
+      { id: uuidv4(), text: 'Complete 10K race', done: false },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+// GET all goals
+app.get('/api/goals', (req, res) => {
+  res.json(goals);
+});
+
+// GET single goal
+app.get('/api/goals/:id', (req, res) => {
+  const goal = goals.find(g => g.id === req.params.id);
+  if (!goal) return res.status(404).json({ message: 'Goal not found' });
+  res.json(goal);
+});
+
+// POST create goal
+app.post('/api/goals', (req, res) => {
+  const { title, description, category, color, targetDate, milestones } = req.body;
+  if (!title) return res.status(400).json({ message: 'Title is required' });
+
+  const newGoal = {
+    id: uuidv4(),
+    title,
+    description: description || '',
+    category: category || 'personal',
+    color: color || '#6C63FF',
+    targetDate: targetDate || null,
+    progress: 0,
+    milestones: (milestones || []).map(m => ({
+      id: uuidv4(),
+      text: typeof m === 'string' ? m : m.text,
+      done: false,
+    })),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  goals.push(newGoal);
+  res.status(201).json(newGoal);
+});
+
+// PUT update goal
+app.put('/api/goals/:id', (req, res) => {
+  const idx = goals.findIndex(g => g.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Goal not found' });
+
+  goals[idx] = {
+    ...goals[idx],
+    ...req.body,
+    id: goals[idx].id,
+    updatedAt: new Date().toISOString(),
+  };
+
+  res.json(goals[idx]);
+});
+
+// PATCH update progress
+app.patch('/api/goals/:id/progress', (req, res) => {
+  const { progress } = req.body;
+  const idx = goals.findIndex(g => g.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Goal not found' });
+
+  goals[idx].progress = Math.max(0, Math.min(100, progress));
+  goals[idx].updatedAt = new Date().toISOString();
+  res.json(goals[idx]);
+});
+
+// PATCH toggle milestone
+app.patch('/api/goals/:id/milestones/:milestoneId', (req, res) => {
+  const goal = goals.find(g => g.id === req.params.id);
+  if (!goal) return res.status(404).json({ message: 'Goal not found' });
+
+  const milestone = goal.milestones.find(m => m.id === req.params.milestoneId);
+  if (!milestone) return res.status(404).json({ message: 'Milestone not found' });
+
+  milestone.done = !milestone.done;
+
+  // Auto-calculate progress from milestones
+  if (goal.milestones.length > 0) {
+    const donePct = goal.milestones.filter(m => m.done).length / goal.milestones.length;
+    goal.progress = Math.round(donePct * 100);
+  }
+
+  goal.updatedAt = new Date().toISOString();
+  res.json(goal);
+});
+
+// DELETE goal
+app.delete('/api/goals/:id', (req, res) => {
+  const idx = goals.findIndex(g => g.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Goal not found' });
+  goals.splice(idx, 1);
+  res.status(204).send();
+});
+
+// Stats endpoint
+app.get('/api/stats', (req, res) => {
+  const total = goals.length;
+  const completed = goals.filter(g => g.progress === 100).length;
+  const inProgress = goals.filter(g => g.progress > 0 && g.progress < 100).length;
+  const notStarted = goals.filter(g => g.progress === 0).length;
+  const avgProgress = total > 0
+    ? Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / total)
+    : 0;
+
+  res.json({ total, completed, inProgress, notStarted, avgProgress });
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ Progress Hub API running on http://localhost:${PORT}`);
+});
